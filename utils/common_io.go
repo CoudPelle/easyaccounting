@@ -125,13 +125,20 @@ func readCSV(csvPath string) [][]string {
 	return rows
 }
 
+// Custom NewWriter to set ";" as separator
+func customWriter(w io.Writer) (writer *csv.Writer) {
+    writer = csv.NewWriter(w)
+    writer.Comma = ';'
+    return
+}
+
 func WriteCSV(rows [][]string, csvName string) {
 	fmt.Println("> Sauvegarde de votre fichier dans le dossier \"output\".")
 	f, err := os.Create(csvName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = csv.NewWriter(f).WriteAll(rows)
+	err = customWriter(f).WriteAll(rows)
 	f.Close()
 	if err != nil {
 		log.Fatal(err)

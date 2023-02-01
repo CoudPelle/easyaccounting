@@ -4,6 +4,8 @@ import (
 	"easyaccounting/utils"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // Desired columns for final csv
@@ -30,21 +32,32 @@ var (
 		"Consultation médicales, médicaments, passage aux urgences"}
 )
 
-// rm end of card number from column 1
-func removeCardNum(values [][]string, colIndex int) {
-	for _, row := range values {
-		row[colIndex] = row[colIndex][12:]
+// rm end of card number from column 1 if it exists
+func removeCardNum(row []string, colIndex int) []string {
+	var new_row []string
+	new_row = row
+	if strings.HasPrefix(row[colIndex], "CARTE X") {
+		new_row[colIndex] = row[colIndex][12:]
 	}
+	return new_row
 }
 // Extract the transaction date contained in column 1 for each row add it as a new column
 func addTransactionDateCol(row []string, LabelColIndex int) []string {
 	var transactionDate string
+	var new_row []string
 
-	transactionDate = row[LabelColIndex][:5]
-	row[LabelColIndex] = row[LabelColIndex][6:]
-	row = append([]string{transactionDate}, row...)
+	new_row = row
 
-	return row
+	_, err := time.Parse("02/01", new_row[LabelColIndex][:5])
+	if err != nil {
+		new_row = append([]string{"NULL"}, new_row...)
+	} else {
+		transactionDate = new_row[LabelColIndex][:5]
+		//remove transaction date from label col 
+		new_row[LabelColIndex] = new_row[LabelColIndex][6:]
+		new_row = append([]string{transactionDate}, new_row...)
+	}
+	return new_row
 }
 // Add a transaction type column.
 func addTypeColumn(row []string) []string{
@@ -82,25 +95,28 @@ func getTypeColumn(row []string) int {
 // Remove unwanted columns for a given row and column index
 func cleanColumns(row []string, colIndex int) []string {
 	var new_row []string
+	new_row = row
 	//create new row without unwanted column
-	new_row = append(row[:colIndex-1], row[colIndex:]...)
+	copy(new_row[colIndex:], new_row[colIndex+1:])
 
-	return new_row
+	return new_row[:len(new_row)-1]
 }
 // Add and remove columns, which changes shape of the array
 func editColumns(values [][]string) [][]string {
 	var values_cleaned [][]string
 
+	fmt.Println("> Choisissez à quel catégorie appartient chaque transaction:\n")
+
 	for _, row := range values {
 		new_row := row
 		//remove 2 last columns : currency and empty column
-		new_row = cleanColumns(new_row, len(new_row))
-		new_row = cleanColumns(new_row, len(new_row))
+		new_row = cleanColumns(new_row, 4)
 		new_row = cleanColumns(new_row, 1)
+		//remove card num if it exists in label col
+		new_row = removeCardNum(new_row, 1)
 		// add a transaction date column as the first column
 		new_row = addTransactionDateCol(new_row, 1)
-		
-		fmt.Println("> Choisissez à quel catégorie appartient chaque transaction:\n")
+		// prompt to add type column
 		new_row = addTypeColumn(new_row)
 		values_cleaned = append(values_cleaned, new_row)
 	}
@@ -111,9 +127,7 @@ func editColumns(values [][]string) [][]string {
 func FormatAccountingCSV (values [][]string) [][]string {
 	// Remove column names
 	values = values[1:]
-	fmt.Println(values[0])
-	// Remove Card number from label col
-	removeCardNum(values, 1)
+
 	values = editColumns(values)
 	// add column names
 	values = append([][]string{COL_NAMES}, values...)
