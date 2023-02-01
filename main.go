@@ -6,13 +6,10 @@
 package main
 
 import (
-	"encoding/csv"
-	"fmt"
-	"log"
-	"os"
 	"strconv"
 	"easyaccounting/utils"
 	"easyaccounting/data"
+	"strings"
 )
 
 func appendSum(rows [][]string) {
@@ -34,24 +31,9 @@ func sum(row []string) string {
 	return strconv.Itoa(sum)
 }
 
-func writeChanges(rows [][]string) {
-	f, err := os.Create("output.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = csv.NewWriter(f).WriteAll(rows)
-	f.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func main() {
-	//columns := rows[0]
-	values := utils.GetCSV()
-	//newColNames(rows)
+	values, csvPath := utils.GetCSV()
 	values = data.FormatAccountingCSV(values)
-	fmt.Println(values[0])
-	// appendSum(rows)
-	// writeChanges(rows)
+	
+	utils.WriteCSV(values, strings.Replace(csvPath, "input", "output", 1))
 }

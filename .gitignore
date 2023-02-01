@@ -1,3 +1,4 @@
 **/.vscode/**
 *.csv
-*/.Identifier
+input/*
+output/*
