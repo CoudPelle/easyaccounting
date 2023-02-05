@@ -1,6 +1,33 @@
 # EASYACCOUNTING
 
-Project to help me to make my accounting and learn Golang programming.
-It aims to help visualisation to do accounting.
-Take as input a filename in input folder. Its a csv of transactions made this month.
-Program edits data and add columns then outputs file as csv.
+Projet pour m'aider à faire ma comptabilité et apprendre la programmation en Golang.
+Il a pour but d'aider à la visualisation de ses dépenses, en reformatant un fichier tableur.
+
+Le programme traite un fichier csv récupérable sur le site de sa banque. C'est un fichier contenant les transactions effectuées ce mois-ci.
+Le programme édite les données et ajoute des colonnes puis sort le fichier sous forme de csv.
+
+## Prérequis
+Le programme n'est compatible qu'avec le format de fichier fourni par la Société Générale.
+ 
+## Fonctionnement
+
+Pour exécuter le programme,
+
+- Créer un dossier "input" et "output" au même emplacement où se trouve votre binaire
+- Placer le fichier de transactions dans le dossier input
+- Lancer le programme,  `./easyaccounting` sous linux, double-click sous windows
+- Entrer le nombre identifiant la catégorie de la transaction.
+- Le programme se ferme et génère un fichier du même nom dans le dossier output
+
+## Exemples de fichiers
+
+Fichier attendu en entrée, récupéré d'un export de son compte sur le site de la Société Générale.
+| **Date de l'opération** | **Libellé**        | **Détail de l'écriture**                                 | **Montant de l'opération** | **Devise** |
+|-------------------------|--------------------|----------------------------------------------------------|----------------------------|------------|
+| 29/12/2022              | CARTE XCCCC RETRAI | CARTE XCCCC RETRAIT DAB SG 28/12 16H44 PARIS ST AMBROISE | -10,00                     | EUR        |
+
+
+Fichier généré en sortie
+| **Date transaction** | **Date prelevement** | **Label**                                    | **Montant** | **Type**   |
+|----------------------|----------------------|----------------------------------------------|-------------|------------|
+| NULL                 | 29/12/2022           | RETRAIT DAB SG 28/12 16H44 PARIS ST AMBROISE | -10,00      | Nourriture |
