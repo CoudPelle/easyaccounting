@@ -33,9 +33,8 @@ Fichier généré en sortie
 | NULL                 | 29/12/2022           | RETRAIT DAB SG 28/12 16H44 PARIS ST AMBROISE | -10,00      | Nourriture |
 
 ## TODO
-- Sauvegarde fichier en cours pour pouvoir s'arrêter et ne pas perdre le travail actuel
+- -> Sauvegarde fichier en cours pour pouvoir s'arrêter et ne pas perdre le travail actuel
 - Choisir soi même le fichier d'input
 - Choisir le lieu de sauvegarde
-- Adapter le projet à la POO (class bank avec un traitement particulier à chaque banque)
 - Rendre le projet paramétrable, on donne un fichier de config avec les traitements à faire, colonnes à supprimer, nom des colonnes désirés...
 - Une vrai interface pour faciliter l'utilisation
