@@ -32,7 +32,9 @@ var (
 		"Consultation médicales, médicaments, passage aux urgences"}
 )
 
-// rm end of card number from column 1 if it exists
+// Desc: Remove end of card number (present as a substring) in column colIndex, if it exists
+// Parameters: row to be process, index of column where card number is
+// Return: a new row with column cleaned
 func removeCardNum(row []string, colIndex int) []string {
 	var new_row []string
 	new_row = row
@@ -42,26 +44,32 @@ func removeCardNum(row []string, colIndex int) []string {
 	return new_row
 }
 
-// Extract the transaction date contained in column 1 for each row add it as a new column
-func addTransactionDateCol(row []string, LabelColIndex int) []string {
+// Desc: Extract the transaction date contained in column labelColIndex for given row
+// Add it as a new column at beginning of the row, Add NULL if no date is found
+// Parameters: row to process
+// Return: a new row with string column transaction date
+func addTransactionDateCol(row []string, labelColIndex int) []string {
 	var transactionDate string
 	var new_row []string
 
 	new_row = row
 
-	_, err := time.Parse("02/01", new_row[LabelColIndex][:5])
+	_, err := time.Parse("02/01", new_row[labelColIndex][:5])
 	if err != nil {
 		new_row = append([]string{"NULL"}, new_row...)
 	} else {
-		transactionDate = new_row[LabelColIndex][:5]
+		transactionDate = new_row[labelColIndex][:5]
 		//remove transaction date from label col
-		new_row[LabelColIndex] = new_row[LabelColIndex][6:]
+		new_row[labelColIndex] = new_row[labelColIndex][6:]
 		new_row = append([]string{transactionDate}, new_row...)
 	}
 	return new_row
 }
 
-// Add a transaction type column.
+// Desc: Add a transaction type column
+// convert user type choice int as string
+// Parameters: row to process
+// Return: row with new string column type
 func addTypeColumn(row []string) []string {
 
 	var choice int
@@ -70,7 +78,9 @@ func addTypeColumn(row []string) []string {
 	return row
 }
 
-// Prompt the user to choose in which type they want to classify this transaction
+// Desc: Display the row and prompt the user to choose a type for the transaction
+// Parameters: row to display
+// Return: the column type as integer
 func getTypeColumn(row []string) int {
 	var choice int
 
@@ -96,7 +106,9 @@ func getTypeColumn(row []string) int {
 	return choice
 }
 
-// Remove unwanted columns for a given row and column index
+// Desc: Remove unwanted columns for a given row and column index
+// Parameters: row to process, colindex to remove
+// Return: a new row without this column
 func cleanColumns(row []string, colIndex int) []string {
 	var new_row []string
 	new_row = row
@@ -106,7 +118,10 @@ func cleanColumns(row []string, colIndex int) []string {
 	return new_row[:len(new_row)-1]
 }
 
-// Add and remove columns, which changes shape of the array
+// Desc: Cycle through array and process row 1-by-1
+// May change the shape of the input array as it add/remove columns
+// Parameters: array to process
+// Return: a new array processed
 func editColumns(values [][]string) [][]string {
 	var values_cleaned [][]string
 
@@ -129,7 +144,7 @@ func editColumns(values [][]string) [][]string {
 	return values_cleaned
 }
 
-// Save Work In Progress, so we can work on a file, stop the program and continue later
+// Desc: Save Work In Progress, so we can work on a file, stop the program and continue later
 // func saveWIP(values [][]string, processIndex int, csvPath string){
 // 	var tmp_filename string
 
@@ -144,8 +159,10 @@ func editColumns(values [][]string) [][]string {
 // 	utils.WriteCSV(values, strings.Replace(csvPath, ".csv", "_tmp.csv", 1))
 // }
 
-// main function for the editing of the accounting exported csv
-// it edits multiple fields and add columns
+// Desc: Main function for the editing of the accounting exported csv
+// It removes original array column names, process the array and return the new array with new column names
+// Parameters: csv as array, csvPath is the full path of csv file
+// Output: csv processed as a new array
 func FormatAccountingCSV(values [][]string, csvPath string) [][]string {
 	// Remove column names
 	values = values[1:]

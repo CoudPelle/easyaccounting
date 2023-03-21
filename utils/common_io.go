@@ -14,7 +14,8 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// Read a string input and parse it according to OS environment
+// Desc: Read a string input with bufio lib and parse it according to OS environment
+// Return: user input without new line character
 func StrInput() string {
 	reader := bufio.NewReader(os.Stdin)
 	text, _ := reader.ReadString('\n')
@@ -28,9 +29,11 @@ func StrInput() string {
 	return text
 }
 
-// Check if a user input is amoung a list of attended string, ask again for a prompt if not
-// Returns choice
-func promptChoice(choiceList []string) string {
+// Desc: Check if a user input is amoung a list of expected string
+// Request an input again if it is not the desired input
+// Parameters: slice of expected input
+// Return: choice
+func getChoice(choiceList []string) string {
 	var choice string
 	choice = StrInput()
 	if !slices.Contains(choiceList, choice) {
@@ -40,7 +43,9 @@ func promptChoice(choiceList []string) string {
 	return choice
 }
 
-// Ask for the cv filename, clean the string and returns it
+// Desc: Ask for the cv filename, clean the string and returns it
+// Return: csv filename given by the user
+// TODO: check if csv filename exists
 func promptCsvName() string {
 
 	fmt.Println("Enter the name of your SG account exported csv")
@@ -49,7 +54,8 @@ func promptCsvName() string {
 	return StrInput()
 }
 
-// Print all transaction types
+// Desc: Print all transaction types from given slice
+// Parameters: transaction types as slice
 func PromptTransactionTypes(types []string) {
 	typesString := "- Afficher les descriptions de types(?)"
 	for index := range types {
@@ -62,7 +68,8 @@ func PromptTransactionTypes(types []string) {
 	fmt.Println(typesString)
 }
 
-// Print descriptions for all transaction types
+// Desc: Print descriptions for all transaction types
+// Parameters: types description as a slice of string
 func PromptTransationTypesDescription(typesDesc []string) {
 	typesDescString := "> Descriptions des types\n"
 	for index := range typesDesc {
@@ -71,7 +78,9 @@ func PromptTransationTypesDescription(typesDesc []string) {
 	fmt.Println(typesDescString)
 }
 
-// check if a tmp file exists, returns true if yes, false if not
+// Desc: Check if a tmp file exists, returns true if yes, false if not
+// Parameters: filepath of file to test
+// Return: a bool indication whether tmp file and original exists
 func checkForTmpSave(filePath string) bool {
 	var IsTmpSave bool
 	IsTmpSave = false
@@ -83,14 +92,19 @@ func checkForTmpSave(filePath string) bool {
 			IsTmpSave = true
 		}
 		// If a tmp save exists, alert user
-		if !IsTmpSave {
+		if IsTmpSave {
+			fmt.Println("Found a temporary save file with source data file.\nFile: '", filePath, "'")
+		}
+		else if !IsTmpSave {
 			fmt.Println("Found a temporary save file without source data file.\nFile: '", filePath, "'")
 		}
 	}
 	return IsTmpSave
 }
 
-// check list of files in input folder. Their must be only one returned
+// Desc: Check list of files in input folder. Their must be only one returned
+// Parameters: a slice of filenames, the local directory path
+// Return: program input filename, whole path of input file
 func checkInputFiles(files []string, localDir string) (string, string) {
 	if len(files) > 0 {
 		// fmt.Println("Found :")
@@ -108,9 +122,10 @@ func checkInputFiles(files []string, localDir string) (string, string) {
 	return files[0], strings.Replace(files[0], localDir, ".", 1)
 }
 
-// Fetch a .csv in ./input folder
+// Desc: Fetch a .csv in ./input folder
 // Returns an error if it can't find any file, or too much files
 // Else, return filepath and filename
+// Return: program input filename, whole path of input file
 func findBankCsv() (string, string) {
 	var files []string
 	var inputFolder string
@@ -140,7 +155,7 @@ func findBankCsv() (string, string) {
 			if checkForTmpSave(path) {
 				fmt.Println("> Found file:", path)
 				fmt.Println("> This is a temporary save file, would you like to open it and continue your work ?(y/n)")
-				choice := promptChoice([]string{"y", "n"})
+				choice := getChoice([]string{"y", "n"})
 				if choice == "y" {
 					// add only path in the files slice and end os.walk
 					files = []string{path}
@@ -157,7 +172,9 @@ func findBankCsv() (string, string) {
 	return checkInputFiles(files, localDir)
 }
 
-// Open csv and returns it as a 2d array of string
+// Desc: Open csv and returns it as a 2d array of string
+// Parameters: Path of the input CSV file
+// Return: CSV file load in a 2d array
 func readCSV(csvPath string) [][]string {
 	file, err := os.Open(csvPath)
 	if err != nil {
@@ -182,12 +199,16 @@ func readCSV(csvPath string) [][]string {
 	return rows
 }
 
-// Custom NewWriter to set ";" as separator
-func customWriter(w io.Writer) (writer *csv.Writer) {
-	writer = csv.NewWriter(w)
+// Desc: Custom NewWriter to set ";" as separator
+// Parameters: file output
+// Return: csv writer
+func customWriter(file io.Writer) (writer *csv.Writer) {
+	writer = csv.NewWriter(file)
 	writer.Comma = ';'
 	return
 }
+// Desc: write a 2d array in a new csv file in a local output directory
+// Parameters: csv file as 2d array, csvname for the output file
 func WriteCSV(rows [][]string, csvName string) {
 	fmt.Println("> Sauvegarde de votre fichier dans le dossier \"output\".")
 	f, err := os.Create(csvName)
@@ -201,8 +222,8 @@ func WriteCSV(rows [][]string, csvName string) {
 	}
 }
 
-// Find csv, open it as a double string array
-// return rows and csv path
+// Desc: Find csv, open it as a double string array
+// Return: rows and csv path
 func GetCSV() ([][]string, string) {
 	csvPath, _ := findBankCsv()
 
