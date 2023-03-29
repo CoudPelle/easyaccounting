@@ -14,11 +14,14 @@ package main
 import (
 	"easyaccounting/data"
 	"easyaccounting/utils"
+	"fmt"
 	"strings"
 )
+
 // main function of the module
 func main() {
-	values, csvPath := utils.GetCSV()
-	values = data.FormatAccountingCSV(values, csvPath)
+	values, csvPath, loadTmp := utils.GetCSV()
+	values = data.FormatAccountingCSV(values, csvPath, loadTmp)
+	fmt.Println("> Sauvegarde de votre fichier dans le dossier \"output\".")
 	utils.WriteCSV(values, strings.Replace(csvPath, "input", "output", 1))
 }

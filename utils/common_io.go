@@ -14,6 +14,17 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+var (
+	ColorReset  = "\033[0m"
+	ColorRed    = "\033[31m"
+	ColorGreen  = "\033[32m"
+	ColorYellow = "\033[33m"
+	ColorBlue   = "\033[34m"
+	ColorPurple = "\033[35m"
+	ColorCyan   = "\033[36m"
+	ColorWhite  = "\033[37m"
+)
+
 // Desc: Read a string input with bufio lib and parse it according to OS environment
 // Return: user input without new line character
 func StrInput() string {
@@ -37,7 +48,7 @@ func getChoice(choiceList []string) string {
 	var choice string
 	choice = StrInput()
 	if !slices.Contains(choiceList, choice) {
-		fmt.Println("Please make a choice between: ", choiceList)
+		fmt.Println("Choisissez parmis les options: ", choiceList)
 		choice = StrInput()
 	}
 	return choice
@@ -48,7 +59,7 @@ func getChoice(choiceList []string) string {
 // TODO: check if csv filename exists
 func promptCsvName() string {
 
-	fmt.Println("Enter the name of your SG account exported csv")
+	fmt.Println("Entrez le nom du csv de votre relevé de compte SG")
 	fmt.Println("---------------------")
 
 	return StrInput()
@@ -84,19 +95,17 @@ func PromptTransationTypesDescription(typesDesc []string) {
 func checkForTmpSave(filePath string) bool {
 	var IsTmpSave bool
 	IsTmpSave = false
-	// If filename Contains _tmp.csv, we check if original file can be found
-	if strings.Contains(filePath, "_tmp.csv") {
-		_, err := os.Stat(strings.Replace(filePath, "_tmp.csv", ".csv", 1))
+	// If filename contains checkpoint file .tmp , we check if original file can be found
+	if strings.Contains(filePath, ".tmp") {
+		source_filename := strings.Replace(filePath, ".tmp", ".csv", 1)
+		_, err := os.Stat(source_filename)
 		// test if error is PathError type
 		if _, isFileMissing := err.(*os.PathError); !isFileMissing {
 			IsTmpSave = true
 		}
-		// If a tmp save exists, alert user
-		if IsTmpSave {
-			fmt.Println("Found a temporary save file with source data file.\nFile: '", filePath, "'")
-		}
-		else if !IsTmpSave {
-			fmt.Println("Found a temporary save file without source data file.\nFile: '", filePath, "'")
+		// If a tmp save exists, without source csv, alert user
+		if !IsTmpSave {
+			fmt.Println("> " + ColorRed + "Le fichier de la sauvegarde d'un travail en cours a été trouvé sans son fichier source." + ColorReset + "\nFichier manquant: '" + source_filename + "'")
 		}
 	}
 	return IsTmpSave
@@ -114,10 +123,10 @@ func checkInputFiles(files []string, localDir string) (string, string) {
 		// }
 
 		if len(files) != 1 {
-			log.Fatal("Too many inputs, please provide only one csv file.")
+			log.Fatal("Trop de fichiers trouvés dans le dossier Input. Merci de fournir uniquement 1 fichier (excepté les .bkp)")
 		}
 	} else {
-		log.Fatal("Couldn't find any input")
+		log.Fatal("Aucun fichier trouvé dans le dossier Input")
 	}
 	return files[0], strings.Replace(files[0], localDir, ".", 1)
 }
@@ -125,10 +134,11 @@ func checkInputFiles(files []string, localDir string) (string, string) {
 // Desc: Fetch a .csv in ./input folder
 // Returns an error if it can't find any file, or too much files
 // Else, return filepath and filename
-// Return: program input filename, whole path of input file
-func findBankCsv() (string, string) {
+// Return: program input filename, whole path of input file, load found tmp boolean
+func findBankCsv() (string, string, bool) {
 	var files []string
 	var inputFolder string
+	var loadTmp = false
 	// Get local dir
 	localDir, err := os.Getwd()
 	if err != nil {
@@ -144,57 +154,53 @@ func findBankCsv() (string, string) {
 	err = filepath.Walk(localDir, func(path string, info os.FileInfo, err error) error {
 		// Todo: detect when its a problem with folder not existing before the output below
 		if err != nil {
-			localFolderError := `Couldn't find a local input folder\n
-				Please create an input and ouput folder in the same folder of easyaccounting binary.`
+			localFolderError := `Dossier local "Input" introuvable\n
+				Merci de créer 2 dossiers "Input" et "Output" dans le dossier de l'application easyaccounting.`
 			fmt.Println(localFolderError)
 			log.Fatal(err)
 			return nil
 		}
 
-		if !info.IsDir() && filepath.Ext(path) == ".csv" {
+		if !info.IsDir() && (filepath.Ext(path) == ".csv" || filepath.Ext(path) == ".tmp") {
 			if checkForTmpSave(path) {
-				fmt.Println("> Found file:", path)
-				fmt.Println("> This is a temporary save file, would you like to open it and continue your work ?(y/n)")
+				fmt.Println("> Fichier temporaire trouvé:", path)
+				fmt.Println("> " + ColorYellow + "Voulez-vous reprendre votre travail ?(y/n)" + ColorReset)
 				choice := getChoice([]string{"y", "n"})
 				if choice == "y" {
 					// add only path in the files slice and end os.walk
-					files = []string{path}
+					files = []string{strings.Replace(path, ".tmp", ".csv", 1)}
+					loadTmp = true
 					return nil
 				}
+			} else {
+				files = append(files, path)
 			}
-			files = append(files, path)
 		}
 		return nil
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	return checkInputFiles(files, localDir)
+	filename, localDirName := checkInputFiles(files, localDir)
+	return filename, localDirName, loadTmp
 }
 
 // Desc: Open csv and returns it as a 2d array of string
 // Parameters: Path of the input CSV file
-// Return: CSV file load in a 2d array
-func readCSV(csvPath string) [][]string {
+// Return: csv file as 2d array
+func ReadCSV(csvPath string) [][]string {
 	file, err := os.Open(csvPath)
 	if err != nil {
-		panic(err)
+		log.Fatal("Unable to read input file "+csvPath, err)
 	}
-	row1, err := bufio.NewReader(file).ReadSlice('\n')
-	if err != nil {
-		panic(err)
-	}
-	_, err = file.Seek(int64(len(row1)), io.SeekStart)
-	if err != nil {
-		panic(err)
-	}
+	defer file.Close()
+
 	reader := csv.NewReader(file)
 	reader.Comma = ';'
 	reader.LazyQuotes = true
 	rows, err := reader.ReadAll()
-	defer file.Close()
 	if err != nil {
-		panic(err)
+		log.Fatal("Unable to parse file as CSV for "+csvPath, err)
 	}
 	return rows
 }
@@ -207,10 +213,10 @@ func customWriter(file io.Writer) (writer *csv.Writer) {
 	writer.Comma = ';'
 	return
 }
+
 // Desc: write a 2d array in a new csv file in a local output directory
 // Parameters: csv file as 2d array, csvname for the output file
 func WriteCSV(rows [][]string, csvName string) {
-	fmt.Println("> Sauvegarde de votre fichier dans le dossier \"output\".")
 	f, err := os.Create(csvName)
 	if err != nil {
 		log.Fatal(err)
@@ -222,12 +228,19 @@ func WriteCSV(rows [][]string, csvName string) {
 	}
 }
 
-// Desc: Find csv, open it as a double string array
-// Return: rows and csv path
-func GetCSV() ([][]string, string) {
-	csvPath, _ := findBankCsv()
+func DeleteFile(filePath string) {
+	err := os.Remove(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
-	fmt.Printf("> Opening \"%s\"\n\n", csvPath)
-	rows := readCSV(csvPath)
-	return rows, csvPath
+// Desc: Find csv, open it as a double string array
+// Return: csv file as 2d array, csv path, load found tmp as boolean
+func GetCSV() ([][]string, string, bool) {
+	csvPath, _, loadTmp := findBankCsv()
+
+	fmt.Printf("> Ouverture de \"%s\"\n", csvPath)
+	rows := ReadCSV(csvPath)
+	return rows, csvPath, loadTmp
 }

@@ -85,7 +85,7 @@ func getTypeColumn(row []string) int {
 	var choice int
 
 	fmt.Println("<---------->")
-	fmt.Printf(" Colonnes    %+q\n", COL_NAMES)
+	fmt.Printf(" Colonnes    %+q\n", COL_NAMES[:len(COL_NAMES)-1])
 	fmt.Printf(" Transaction %+q\n", row)
 	fmt.Print("<---------->\n\n")
 
@@ -99,7 +99,7 @@ func getTypeColumn(row []string) int {
 		var err error
 		choice, err = strconv.Atoi(input)
 		if err != nil || choice < 0 || choice > len(TRANSACTION_TYPES) {
-			fmt.Print("\nErreur: Merci d'entrer une des valeurs proposés.\n\n")
+			fmt.Print(utils.ColorRed + "\nErreur: Merci d'entrer une des valeurs proposées." + utils.ColorReset + "\n\n")
 			choice = getTypeColumn(row)
 		}
 	}
@@ -118,18 +118,47 @@ func cleanColumns(row []string, colIndex int) []string {
 	return new_row[:len(new_row)-1]
 }
 
+// Desc: Save a checkpoint of work in progress, so we can work on a file, stop the program and continue later
+// Parameters: csv file as 2d array, csvPath is the full path of csv file
+func saveCheckpoint(values [][]string, csvPath string) {
+	var tmp_filename string
+
+	tmp_filename = csvPath
+	tmp_filename = strings.Replace(csvPath, ".csv", ".tmp", 1)
+
+	utils.WriteCSV(values, tmp_filename)
+}
+
+// Desc: Delete the checkpoint of work in progress
+// Parameters: csvPath is the full path of csv file
+func deleteCheckpoint(csvPath string) {
+	var tmp_filePath string
+
+	tmp_filePath = csvPath
+	tmp_filePath = strings.Replace(csvPath, ".csv", ".tmp", 1)
+
+	utils.DeleteFile(tmp_filePath)
+}
+
 // Desc: Cycle through array and process row 1-by-1
 // May change the shape of the input array as it add/remove columns
-// Parameters: array to process
+// Parameters: csv file as 2d array, csvPath is the full path of csv file, load found tmp as boolean
 // Return: a new array processed
-func editColumns(values [][]string) [][]string {
+func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 	var values_cleaned [][]string
-
+	if loadTmp == true {
+		values_cleaned = utils.ReadCSV(strings.Replace(csvPath, ".csv", ".tmp", 1))
+	}
 	fmt.Print("> Choisissez à quel catégorie appartient chaque transaction:\n\n")
+	for index, row := range values {
+		// skip processed rows
+		if index < len(values_cleaned) {
+			continue
+		}
 
-	for _, row := range values {
 		new_row := row
-		//remove 2 last columns : currency and empty column
+		//remove 2 last columns : currency, short label and empty column
+		new_row = cleanColumns(new_row, 4)
 		new_row = cleanColumns(new_row, 4)
 		new_row = cleanColumns(new_row, 1)
 		//remove card num if it exists in label col
@@ -139,35 +168,21 @@ func editColumns(values [][]string) [][]string {
 		// prompt to add type column
 		new_row = addTypeColumn(new_row)
 		values_cleaned = append(values_cleaned, new_row)
-		//quickSave(values_cleaned)
+		saveCheckpoint(values_cleaned, csvPath)
 	}
 	return values_cleaned
 }
 
-// Desc: Save Work In Progress, so we can work on a file, stop the program and continue later
-// func saveWIP(values [][]string, processIndex int, csvPath string){
-// 	var tmp_filename string
-
-// 	tmp_filename = csvPath
-// 	// add column names
-// 	values = append([][]string{COL_NAMES}, values...)
-// 	// Check if we are not trying to save a tmp file
-// 	if ! strings.contains(csvPath, "_tmp.csv"){
-// 		tmp_filename = strings.Replace(csvPath, ".csv", "_tmp.csv", 1)
-// 	}
-
-// 	utils.WriteCSV(values, strings.Replace(csvPath, ".csv", "_tmp.csv", 1))
-// }
-
 // Desc: Main function for the editing of the accounting exported csv
 // It removes original array column names, process the array and return the new array with new column names
-// Parameters: csv as array, csvPath is the full path of csv file
+// Parameters: csv file as 2d array, csvPath is the full path of csv file, load found tmp as boolean
 // Output: csv processed as a new array
-func FormatAccountingCSV(values [][]string, csvPath string) [][]string {
+func FormatAccountingCSV(values [][]string, csvPath string, loadTmp bool) [][]string {
 	// Remove column names
 	values = values[1:]
-
-	values = editColumns(values)
+	values = editColumns(values, csvPath, loadTmp)
+	// Delete checkpoint file of work in progress
+	deleteCheckpoint(csvPath)
 	// add column names
 	values = append([][]string{COL_NAMES}, values...)
 	return values
