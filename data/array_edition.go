@@ -11,11 +11,13 @@ import (
 // Desired columns for final csv
 var (
 	COL_NAMES = []string{
-		"Date transaction", "Date prelevement", "Label", "Montant", "Type"}
-	TRANSACTION_TYPES = []string{
+		"Date transaction", "Date prelevement", "Label", "Montant", "Type", "Catégorie"}
+	TRANSACTION_TYPE = []string{
+		"Dépense", "Versement"}
+	TRANSACTION_CATEGORIES = []string{
 		"Cadeau", "Don", "Divers", "Vacances", "Administratif", "Logement",
-		"Vetement", "Media", "Abonnement", "Transport", "Sortie", "Nourriture", "Loisir", "Sante"}
-	TRANSACTION_TYPES_DESC = []string{
+		"Vetement", "Media", "Abonnement", "Transport", "Sortie", "Nourriture", "Loisir", "Sante", "Travail"}
+	TRANSACTION_CATEGORIES_DESC = []string{
 		"Cadeaux à des proches",
 		"Dons à des associations, projets...",
 		"Non catégorisable, dépense ponctuelle",
@@ -29,7 +31,8 @@ var (
 		"Activités entre amis/famille, restaurant/fast-food accompagné ou non",
 		"Marché, épicerie, boulangerie, fromager",
 		"Toutes les activités ludiques non liés au travail : achats de jeux, livres, concert, cinéma, sport, musique, DIY",
-		"Consultation médicales, médicaments, passage aux urgences"}
+		"Consultation médicales, médicaments, passage aux urgences",
+		"Dépenses/Versements liés au travail (matériel, déplacements, salaires...)"}
 )
 
 // Desc: Remove end of card number (present as a substring) in column colIndex, if it exists
@@ -44,63 +47,77 @@ func removeCardNum(row []string, colIndex int) []string {
 	return new_row
 }
 
-// Desc: Extract the transaction date contained in column labelColIndex for given row
+// Desc: Extract the transaction date contained in column labelIndex for given row
 // Add it as a new column at beginning of the row, Add NULL if no date is found
 // Parameters: row to process
 // Return: a new row with string column transaction date
-func addTransactionDateCol(row []string, labelColIndex int) []string {
+func addTransactionDateCol(row []string, labelIndex int) []string {
 	var transactionDate string
 	var new_row []string
 
 	new_row = row
 
-	_, err := time.Parse("02/01", new_row[labelColIndex][:5])
+	_, err := time.Parse("02/01", new_row[labelIndex][:5])
 	if err != nil {
 		new_row = append([]string{"NULL"}, new_row...)
 	} else {
-		transactionDate = new_row[labelColIndex][:5]
+		transactionDate = new_row[labelIndex][:5]
 		//remove transaction date from label col
-		new_row[labelColIndex] = new_row[labelColIndex][6:]
+		new_row[labelIndex] = new_row[labelIndex][6:]
 		new_row = append([]string{transactionDate}, new_row...)
 	}
 	return new_row
 }
 
-// Desc: Add a transaction type column
-// convert user type choice int as string
-// Parameters: row to process
-// Return: row with new string column type
-func addTypeColumn(row []string) []string {
-
-	var choice int
-	choice = getTypeColumn(row)
-	row = append(row, TRANSACTION_TYPES[choice])
+// Desc: Add a transaction type column (deposit/versement or spent/dépense)
+// Parameters: row to process, amount column index
+// Returns: new row with string column transaction type
+func addTypeColumn(row []string, amountIndex int) []string {
+	var transactionType string
+	if amount, _ := strconv.Atoi(row[amountIndex]); amount < 0 {
+		transactionType = TRANSACTION_TYPE[0]
+	} else {
+		transactionType = TRANSACTION_TYPE[1]
+	}
+	row = append(row, transactionType)
 	return row
 }
 
-// Desc: Display the row and prompt the user to choose a type for the transaction
+// Desc: Add a transaction category column
+// convert user category choice int as string
+// Parameters: row to process
+// Return: row with new string column category
+func addCategoryColumn(row []string) []string {
+
+	var choice int
+	choice = getCategoryColumn(row)
+	row = append(row, TRANSACTION_CATEGORIES[choice])
+	return row
+}
+
+// Desc: Display the row and prompt the user to choose a category for the transaction
 // Parameters: row to display
-// Return: the column type as integer
-func getTypeColumn(row []string) int {
+// Return: the column category as integer
+func getCategoryColumn(row []string) int {
 	var choice int
 
 	fmt.Println("<---------->")
 	fmt.Printf(" Colonnes    %+q\n", COL_NAMES[:len(COL_NAMES)-1])
 	fmt.Printf(" Transaction %+q\n", row)
-	fmt.Print("<---------->\n\n")
+	fmt.Printf("<---------->\n\n")
 
-	utils.PromptTransactionTypes(TRANSACTION_TYPES)
+	utils.PromptTransactionTypes(TRANSACTION_CATEGORIES)
 	input := utils.StrInput()
 
 	if input == "?" {
-		utils.PromptTransationTypesDescription(TRANSACTION_TYPES_DESC)
-		choice = getTypeColumn(row)
+		utils.PromptTransationTypesDescription(TRANSACTION_CATEGORIES_DESC)
+		choice = getCategoryColumn(row)
 	} else {
 		var err error
 		choice, err = strconv.Atoi(input)
-		if err != nil || choice < 0 || choice > len(TRANSACTION_TYPES) {
+		if err != nil || choice < 0 || choice > len(TRANSACTION_CATEGORIES) {
 			fmt.Print(utils.ColorRed + "\nErreur: Merci d'entrer une des valeurs proposées." + utils.ColorReset + "\n\n")
-			choice = getTypeColumn(row)
+			choice = getCategoryColumn(row)
 		}
 	}
 	return choice
@@ -127,6 +144,16 @@ func saveCheckpoint(values [][]string, csvPath string) {
 	tmp_filename = strings.Replace(csvPath, ".csv", ".tmp", 1)
 
 	utils.WriteCSV(values, tmp_filename)
+}
+
+// Desc: Create two 2d arrays by transaction type
+// Parameters: csv file as 2d array, type column index
+// Return: multiple csv files as 2d arrays
+func discriminateByType(values [][]string, typeIndex int) map[string][][]string {
+	var values_discriminated map[string][][]string
+	for index, row := range values {
+		values_discriminated[typeIndex]
+	}
 }
 
 // Desc: Delete the checkpoint of work in progress
@@ -159,14 +186,16 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 		new_row := row
 		//remove 2 last columns : currency, short label and empty column
 		new_row = cleanColumns(new_row, 4)
-		new_row = cleanColumns(new_row, 4)
 		new_row = cleanColumns(new_row, 1)
+		//new_row = cleanColumns(new_row, 4)
 		//remove card num if it exists in label col
 		new_row = removeCardNum(new_row, 1)
 		// add a transaction date column as the first column
 		new_row = addTransactionDateCol(new_row, 1)
-		// prompt to add type column
-		new_row = addTypeColumn(new_row)
+		// add a transaction type column
+		new_row = addTypeColumn(new_row, 3)
+		// prompt to add category column
+		new_row = addCategoryColumn(new_row)
 		values_cleaned = append(values_cleaned, new_row)
 		saveCheckpoint(values_cleaned, csvPath)
 	}

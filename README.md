@@ -33,7 +33,8 @@ Fichier généré en sortie
 | NULL                 | 29/12/2022           | RETRAIT DAB SG 28/12 16H44 PARIS ST AMBROISE | -10,00      | Nourriture |
 
 ## TODO
-- -> Sauvegarde fichier en cours pour pouvoir s'arrêter et ne pas perdre le travail actuel
+X Sauvegarde fichier en cours pour pouvoir s'arrêter et ne pas perdre le travail actuel
+- Résoudre bug chargement fichier => 1ère ligne n'est pas un csv
 - Choisir soi même le fichier d'input
 - Choisir le lieu de sauvegarde
 - Rendre le projet paramétrable, on donne un fichier de config avec les traitements à faire, colonnes à supprimer, nom des colonnes désirés...

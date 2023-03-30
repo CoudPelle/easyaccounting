@@ -123,7 +123,7 @@ func checkInputFiles(files []string, localDir string) (string, string) {
 		// }
 
 		if len(files) != 1 {
-			log.Fatal("Trop de fichiers trouvés dans le dossier Input. Merci de fournir uniquement 1 fichier (excepté les .bkp)")
+			log.Fatal("Trop de fichiers trouvés dans le dossier Input. Merci de fournir uniquement 1 fichier (excepté les .tmp)")
 		}
 	} else {
 		log.Fatal("Aucun fichier trouvé dans le dossier Input")
