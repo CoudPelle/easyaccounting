@@ -20,8 +20,10 @@ import (
 
 // main function of the module
 func main() {
+	var formated_values_by_type map[string][][]string
 	values, csvPath, loadTmp := utils.GetCSV()
-	values = data.FormatAccountingCSV(values, csvPath, loadTmp)
+	formated_values_by_type = data.FormatAccountingCSV(values, csvPath, loadTmp)
 	fmt.Println("> Sauvegarde de votre fichier dans le dossier \"output\".")
+	utils.SaveCSVMap(formated_values_by_type, strings.Replace(csvPath, "input", "output", 1))
 	utils.WriteCSV(values, strings.Replace(csvPath, "input", "output", 1))
 }

@@ -3,6 +3,7 @@ package data
 import (
 	"easyaccounting/utils"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -11,28 +12,28 @@ import (
 // Desired columns for final csv
 var (
 	COL_NAMES = []string{
-		"Date transaction", "Date prelevement", "Label", "Montant", "Type", "Catégorie"}
-	TRANSACTION_TYPE = []string{
-		"Dépense", "Versement"}
+		"Date transaction", "Date prelevement", "Label", "Montant", "Type", "Categorie"}
+	TRANSACTION_TYPES = []string{
+		"Depense", "Versement"}
 	TRANSACTION_CATEGORIES = []string{
 		"Cadeau", "Don", "Divers", "Vacances", "Administratif", "Logement",
 		"Vetement", "Media", "Abonnement", "Transport", "Sortie", "Nourriture", "Loisir", "Sante", "Travail"}
 	TRANSACTION_CATEGORIES_DESC = []string{
 		"Cadeaux à des proches",
 		"Dons à des associations, projets...",
-		"Non catégorisable, dépense ponctuelle",
-		"Logements de vacances, activités",
+		"Non categorisable, depense ponctuelle",
+		"Logements de vacances, activites",
 		"Impôts, fabrication papiers...",
-		"Loyer, factures électricité/gaz/box internet, lavomatic, matériel d'entretien, éléctroménager, meubles",
+		"Loyer, factures electricite/gaz/box internet, lavomatic, materiel d'entretien, electromenager, meubles",
 		"Vêtements, chaussures, ce qui se porte",
-		"Abonnements à des medias, numérique comme papier",
+		"Abonnements à des medias, numerique comme papier",
 		"Autres abonnements : netflix, bitwarden, forfait mobile, spotify",
 		"Abonnements transports, billet de trains, carburant",
-		"Activités entre amis/famille, restaurant/fast-food accompagné ou non",
-		"Marché, épicerie, boulangerie, fromager",
-		"Toutes les activités ludiques non liés au travail : achats de jeux, livres, concert, cinéma, sport, musique, DIY",
-		"Consultation médicales, médicaments, passage aux urgences",
-		"Dépenses/Versements liés au travail (matériel, déplacements, salaires...)"}
+		"Activites entre amis/famille, restaurant/fast-food accompagne ou non",
+		"Marche, epicerie, boulangerie, fromager",
+		"Toutes les activites ludiques non lies au travail : achats de jeux, livres, concert, cinema, sport, musique, DIY",
+		"Consultation medicales, medicaments, passage aux urgences",
+		"Depenses/Versements lies au travail (materiel, deplacements, salaires...)"}
 )
 
 // Desc: Remove end of card number (present as a substring) in column colIndex, if it exists
@@ -51,6 +52,7 @@ func removeCardNum(row []string, colIndex int) []string {
 // Add it as a new column at beginning of the row, Add NULL if no date is found
 // Parameters: row to process
 // Return: a new row with string column transaction date
+// TODO: replace hard coded substring to a date regex
 func addTransactionDateCol(row []string, labelIndex int) []string {
 	var transactionDate string
 	var new_row []string
@@ -69,15 +71,22 @@ func addTransactionDateCol(row []string, labelIndex int) []string {
 	return new_row
 }
 
-// Desc: Add a transaction type column (deposit/versement or spent/dépense)
+// Desc: Add a transaction type column (deposit/versement or spent/depense)
 // Parameters: row to process, amount column index
 // Returns: new row with string column transaction type
 func addTypeColumn(row []string, amountIndex int) []string {
 	var transactionType string
-	if amount, _ := strconv.Atoi(row[amountIndex]); amount < 0 {
-		transactionType = TRANSACTION_TYPE[0]
+	// Replace comma by dot is required to be parsed as float
+	amountStr := strings.Replace(row[amountIndex], ",", ".", 1)
+	amount, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		log.Fatal("ERREUR FATALE: Impossible de recuperer le montant d'une de vos transactions\nTransaction: ", row, "\nErreur: ", err)
+	}
+
+	if amount < 0 {
+		transactionType = TRANSACTION_TYPES[0]
 	} else {
-		transactionType = TRANSACTION_TYPE[1]
+		transactionType = TRANSACTION_TYPES[1]
 	}
 	row = append(row, transactionType)
 	return row
@@ -116,7 +125,7 @@ func getCategoryColumn(row []string) int {
 		var err error
 		choice, err = strconv.Atoi(input)
 		if err != nil || choice < 0 || choice > len(TRANSACTION_CATEGORIES) {
-			fmt.Print(utils.ColorRed + "\nErreur: Merci d'entrer une des valeurs proposées." + utils.ColorReset + "\n\n")
+			fmt.Print(utils.ColorRed + "\nErreur: Merci d'entrer une des valeurs proposees." + utils.ColorReset + "\n\n")
 			choice = getCategoryColumn(row)
 		}
 	}
@@ -126,7 +135,7 @@ func getCategoryColumn(row []string) int {
 // Desc: Remove unwanted columns for a given row and column index
 // Parameters: row to process, colindex to remove
 // Return: a new row without this column
-func cleanColumns(row []string, colIndex int) []string {
+func removeColumns(row []string, colIndex int) []string {
 	var new_row []string
 	new_row = row
 	//create new row without unwanted column
@@ -150,10 +159,12 @@ func saveCheckpoint(values [][]string, csvPath string) {
 // Parameters: csv file as 2d array, type column index
 // Return: multiple csv files as 2d arrays
 func discriminateByType(values [][]string, typeIndex int) map[string][][]string {
-	var values_discriminated map[string][][]string
-	for index, row := range values {
-		values_discriminated[typeIndex]
+	values_discriminated := make(map[string][][]string)
+	// initialise map
+	for _, row := range values {
+		values_discriminated[row[typeIndex]] = append(values_discriminated[row[typeIndex]], row)
 	}
+	return values_discriminated
 }
 
 // Desc: Delete the checkpoint of work in progress
@@ -176,7 +187,7 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 	if loadTmp == true {
 		values_cleaned = utils.ReadCSV(strings.Replace(csvPath, ".csv", ".tmp", 1))
 	}
-	fmt.Print("> Choisissez à quel catégorie appartient chaque transaction:\n\n")
+	fmt.Print("> Choisissez à quel categorie appartient chaque transaction:\n\n")
 	for index, row := range values {
 		// skip processed rows
 		if index < len(values_cleaned) {
@@ -185,9 +196,9 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 
 		new_row := row
 		//remove 2 last columns : currency, short label and empty column
-		new_row = cleanColumns(new_row, 4)
-		new_row = cleanColumns(new_row, 1)
-		//new_row = cleanColumns(new_row, 4)
+		new_row = removeColumns(new_row, 4)
+		new_row = removeColumns(new_row, 1)
+		//new_row = removeColumns(new_row, 4)
 		//remove card num if it exists in label col
 		new_row = removeCardNum(new_row, 1)
 		// add a transaction date column as the first column
@@ -205,14 +216,17 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 // Desc: Main function for the editing of the accounting exported csv
 // It removes original array column names, process the array and return the new array with new column names
 // Parameters: csv file as 2d array, csvPath is the full path of csv file, load found tmp as boolean
-// Output: csv processed as a new array
-func FormatAccountingCSV(values [][]string, csvPath string, loadTmp bool) [][]string {
+// Output: map of csv per transaction types
+func FormatAccountingCSV(values [][]string, csvPath string, loadTmp bool) map[string][][]string {
+
+	var formated_values_by_type map[string][][]string
 	// Remove column names
 	values = values[1:]
 	values = editColumns(values, csvPath, loadTmp)
+	formated_values_by_type = discriminateByType(values, 4)
 	// Delete checkpoint file of work in progress
 	deleteCheckpoint(csvPath)
 	// add column names
 	values = append([][]string{COL_NAMES}, values...)
-	return values
+	return formated_values_by_type
 }

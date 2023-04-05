@@ -215,9 +215,9 @@ func customWriter(file io.Writer) (writer *csv.Writer) {
 }
 
 // Desc: write a 2d array in a new csv file in a local output directory
-// Parameters: csv file as 2d array, csvname for the output file
-func WriteCSV(rows [][]string, csvName string) {
-	f, err := os.Create(csvName)
+// Parameters: csv file as 2d array, csvFilePath for the output file path
+func WriteCSV(rows [][]string, csvFilePath string) {
+	f, err := os.Create(csvFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -225,6 +225,15 @@ func WriteCSV(rows [][]string, csvName string) {
 	f.Close()
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+// Desc: cycle map keys of given csv map and write a csv per key
+// Parameters: csv files as map of 2d array, csvFilePath for the output file path
+func SaveCSVMap(csvMap map[string][][]string, csvFilePath string) {
+	for transaction_type := range csvMap {
+		output_suffix := "_" + transaction_type + "_transactions.csv"
+		WriteCSV(csvMap[transaction_type], strings.Replace(csvFilePath, ".csv", output_suffix, 1))
 	}
 }
 
