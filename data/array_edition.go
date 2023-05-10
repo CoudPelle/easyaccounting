@@ -187,28 +187,33 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 	if loadTmp == true {
 		values_cleaned = utils.ReadCSV(strings.Replace(csvPath, ".csv", ".tmp", 1))
 	}
-	fmt.Print("> Choisissez à quel categorie appartient chaque transaction:\n\n")
-	for index, row := range values {
-		// skip processed rows
-		if index < len(values_cleaned) {
-			continue
-		}
+	if len(values_cleaned) != len(values) {
+		fmt.Print("> Choisissez à quel categorie appartient chaque transaction:\n\n")
 
-		new_row := row
-		//remove 2 last columns : currency, short label and empty column
-		new_row = removeColumns(new_row, 4)
-		new_row = removeColumns(new_row, 1)
-		//new_row = removeColumns(new_row, 4)
-		//remove card num if it exists in label col
-		new_row = removeCardNum(new_row, 1)
-		// add a transaction date column as the first column
-		new_row = addTransactionDateCol(new_row, 1)
-		// add a transaction type column
-		new_row = addTypeColumn(new_row, 3)
-		// prompt to add category column
-		new_row = addCategoryColumn(new_row)
-		values_cleaned = append(values_cleaned, new_row)
-		saveCheckpoint(values_cleaned, csvPath)
+		for index, row := range values {
+			// skip processed rows
+			if index < len(values_cleaned) {
+				continue
+			}
+
+			new_row := row
+			//remove 2 last columns : currency, short label and empty column
+			new_row = removeColumns(new_row, 4)
+			new_row = removeColumns(new_row, 1)
+			//new_row = removeColumns(new_row, 4)
+			//remove card num if it exists in label col
+			new_row = removeCardNum(new_row, 1)
+			// add a transaction date column as the first column
+			new_row = addTransactionDateCol(new_row, 1)
+			// add a transaction type column
+			new_row = addTypeColumn(new_row, 3)
+			// prompt to add category column
+			new_row = addCategoryColumn(new_row)
+			// ! Pourrais causer des soucis ?
+			new_row = removeColumns(new_row, 4)
+			values_cleaned = append(values_cleaned, new_row)
+			saveCheckpoint(values_cleaned, csvPath)
+		}
 	}
 	return values_cleaned
 }
@@ -225,7 +230,7 @@ func FormatAccountingCSV(values [][]string, csvPath string, loadTmp bool) map[st
 	values = editColumns(values, csvPath, loadTmp)
 	formated_values_by_type = discriminateByType(values, 4)
 	// Delete checkpoint file of work in progress
-	deleteCheckpoint(csvPath)
+	//deleteCheckpoint(csvPath)
 	// add column names
 	values = append([][]string{COL_NAMES}, values...)
 	return formated_values_by_type

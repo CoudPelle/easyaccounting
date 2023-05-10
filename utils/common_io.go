@@ -113,29 +113,23 @@ func checkForTmpSave(filePath string) bool {
 
 // Desc: Check list of files in input folder. Their must be only one returned
 // Parameters: a slice of filenames, the local directory path
-// Return: program input filename, whole path of input file
-func checkInputFiles(files []string, localDir string) (string, string) {
+// Return: input file path
+func checkInputFiles(files []string, localDir string) string {
 	if len(files) > 0 {
-		// fmt.Println("Found :")
-		// for _, file := range files {
-		// 	// print local path of input file
-		// 	fmt.Println(strings.Replace(file, localDir, ".", 1))
-		// }
-
 		if len(files) != 1 {
 			log.Fatal("Trop de fichiers trouvés dans le dossier Input. Merci de fournir uniquement 1 fichier (excepté les .tmp)")
 		}
 	} else {
 		log.Fatal("Aucun fichier trouvé dans le dossier Input")
 	}
-	return files[0], strings.Replace(files[0], localDir, ".", 1)
+	return files[0]
 }
 
 // Desc: Fetch a .csv in ./input folder
 // Returns an error if it can't find any file, or too much files
 // Else, return filepath and filename
-// Return: program input filename, whole path of input file, load found tmp boolean
-func findBankCsv() (string, string, bool) {
+// Return: path of input file, load found tmp boolean
+func findBankCsv() (string, bool) {
 	var files []string
 	var inputFolder string
 	var loadTmp = false
@@ -181,8 +175,8 @@ func findBankCsv() (string, string, bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	filename, localDirName := checkInputFiles(files, localDir)
-	return filename, localDirName, loadTmp
+	filePath := checkInputFiles(files, localDir)
+	return filePath, loadTmp
 }
 
 // Desc: Open csv and returns it as a 2d array of string
@@ -229,14 +223,29 @@ func WriteCSV(rows [][]string, csvFilePath string) {
 }
 
 // Desc: cycle map keys of given csv map and write a csv per key
-// Parameters: csv files as map of 2d array, csvFilePath for the output file path
-func SaveCSVMap(csvMap map[string][][]string, csvFilePath string) {
+// in a new folder with original filename
+// Parameters: csv files as map of 2d array, inputFilePath
+func saveCSVMap(csvMap map[string][][]string, inputFilePath string) {
+
+	outputPath := strings.Replace(inputFilePath, "input", "output", 1)
+	fileName := outputPath[strings.LastIndex(outputPath, "/")+1 : strings.Index(outputPath, ".csv")]
+	outputPath = outputPath[:strings.LastIndex(outputPath, "/")+1] +
+		fileName + "/"
+	os.MkdirAll(outputPath, os.ModePerm)
 	for transaction_type := range csvMap {
-		output_suffix := "_" + transaction_type + "_transactions.csv"
-		WriteCSV(csvMap[transaction_type], strings.Replace(csvFilePath, ".csv", output_suffix, 1))
+		outputFile := transaction_type + ".csv"
+		WriteCSV(csvMap[transaction_type], outputPath+outputFile)
 	}
 }
 
+// Desc: Global saving function, I may add other stuff to save later
+// Parameters: csv files as map of 2d array, inputFilePath
+func SaveResults(csvMap map[string][][]string, inputFilePath string) {
+	saveCSVMap(csvMap, inputFilePath)
+}
+
+// Desc: delete a file at a given filePath
+// Parameters: filePath of file to delete
 func DeleteFile(filePath string) {
 	err := os.Remove(filePath)
 	if err != nil {
@@ -245,9 +254,9 @@ func DeleteFile(filePath string) {
 }
 
 // Desc: Find csv, open it as a double string array
-// Return: csv file as 2d array, csv path, load found tmp as boolean
+// Return: csv file as 2d array, csv path, loadTmp as boolean
 func GetCSV() ([][]string, string, bool) {
-	csvPath, _, loadTmp := findBankCsv()
+	csvPath, loadTmp := findBankCsv()
 
 	fmt.Printf("> Ouverture de \"%s\"\n", csvPath)
 	rows := ReadCSV(csvPath)
