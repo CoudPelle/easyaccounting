@@ -136,8 +136,8 @@ func getCategoryColumn(row []string) int {
 // Parameters: row to process, colindex to remove
 // Return: a new row without this column
 func removeColumns(row []string, colIndex int) []string {
-	var new_row []string
-	new_row = row
+	new_row := make([]string, len(row))
+	copy(new_row, row)
 	//create new row without unwanted column
 	copy(new_row[colIndex:], new_row[colIndex+1:])
 
@@ -162,7 +162,8 @@ func discriminateByType(values [][]string, typeIndex int) map[string][][]string 
 	values_discriminated := make(map[string][][]string)
 	// initialise map
 	for _, row := range values {
-		values_discriminated[row[typeIndex]] = append(values_discriminated[row[typeIndex]], row)
+		new_row := removeColumns(row, 4)
+		values_discriminated[row[typeIndex]] = append(values_discriminated[row[typeIndex]], new_row)
 	}
 	return values_discriminated
 }
@@ -209,8 +210,6 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 			new_row = addTypeColumn(new_row, 3)
 			// prompt to add category column
 			new_row = addCategoryColumn(new_row)
-			// ! Pourrais causer des soucis ?
-			new_row = removeColumns(new_row, 4)
 			values_cleaned = append(values_cleaned, new_row)
 			saveCheckpoint(values_cleaned, csvPath)
 		}
