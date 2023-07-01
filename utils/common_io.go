@@ -155,8 +155,8 @@ func findBankCsv() (string, bool) {
 			return nil
 		}
 
-		if !info.IsDir() && (filepath.Ext(path) == ".csv" || filepath.Ext(path) == ".tmp") {
-			if checkForTmpSave(path) {
+		if !info.IsDir() {
+			if filepath.Ext(path) == ".tmp" && checkForTmpSave(path) {
 				fmt.Println("> Fichier temporaire trouvé:", path)
 				fmt.Println("> " + ColorYellow + "Voulez-vous reprendre votre travail ?(y/n)" + ColorReset)
 				choice := getChoice([]string{"y", "n"})
@@ -166,7 +166,7 @@ func findBankCsv() (string, bool) {
 					loadTmp = true
 					return nil
 				}
-			} else {
+			} else if filepath.Ext(path) == ".csv" {
 				files = append(files, path)
 			}
 		}

@@ -12,28 +12,43 @@ import (
 // Desired columns for final csv
 var (
 	COL_NAMES = []string{
-		"Date transaction", "Date prelevement", "Label", "Montant", "Type", "Categorie"}
+		"Date transaction", "Label", "Date prelevement", "Montant", "Type", "Categorie"}
 	TRANSACTION_TYPES = []string{
 		"Depense", "Versement"}
 	TRANSACTION_CATEGORIES = []string{
-		"Cadeau", "Don", "Divers", "Vacances", "Administratif", "Logement",
-		"Vetement", "Media", "Abonnement", "Transport", "Sortie", "Nourriture", "Loisir", "Sante", "Travail"}
+		"Media",
+		"Nourriture",
+		"Sante",
+		"Sortie",
+		"Logement",
+		"Loisir",
+		"Transport",
+		"Administratif",
+		"Abonnement",
+		"Divers",
+		"Travail",
+		"Vetement",
+		"Don",
+		"Cadeau",
+		"Vacances",
+	}
 	TRANSACTION_CATEGORIES_DESC = []string{
-		"Cadeaux à des proches",
-		"Dons à des associations, projets...",
-		"Non categorisable, depense ponctuelle",
-		"Logements de vacances, activites",
-		"Impôts, fabrication papiers...",
-		"Loyer, factures electricite/gaz/box internet, lavomatic, materiel d'entretien, electromenager, meubles",
-		"Vêtements, chaussures, ce qui se porte",
 		"Abonnements à des medias, numerique comme papier",
-		"Autres abonnements : netflix, bitwarden, forfait mobile, spotify",
-		"Abonnements transports, billet de trains, carburant",
-		"Activites entre amis/famille, restaurant/fast-food accompagne ou non",
 		"Marche, epicerie, boulangerie, fromager",
-		"Toutes les activites ludiques non lies au travail : achats de jeux, livres, concert, cinema, sport, musique, DIY",
 		"Consultation medicales, medicaments, passage aux urgences",
-		"Depenses/Versements lies au travail (materiel, deplacements, salaires...)"}
+		"Activites entre amis/famille, restaurant/fast-food accompagne ou non",
+		"Loyer, factures electricite/gaz/box internet, lavomatic, materiel d'entretien, electromenager, meubles",
+		"Toutes les activites ludiques non lies au travail : achats de jeux, livres, concert, cinema, sport, musique, DIY",
+		"Abonnements transports, billet de trains, carburant",
+		"Impôts, fabrication papiers...",
+		"Autres abonnements : netflix, bitwarden, forfait mobile, spotify",
+		"Non categorisable, depense ponctuelle",
+		"Depenses/Versements lies au travail (materiel, deplacements, salaires...)",
+		"Vêtements, chaussures, ce qui se porte",
+		"Dons à des associations, projets...",
+		"Cadeaux à des proches",
+		"Logements de vacances, activites",
+	}
 )
 
 // Desc: Remove end of card number (present as a substring) in column colIndex, if it exists
@@ -132,16 +147,32 @@ func getCategoryColumn(row []string) int {
 	return choice
 }
 
-// Desc: Remove unwanted columns for a given row and column index
+// Desc: Remove unwanted column for a given row and column index
 // Parameters: row to process, colindex to remove
 // Return: a new row without this column
-func removeColumns(row []string, colIndex int) []string {
+func removeColumn(row []string, colIndex int) []string {
 	new_row := make([]string, len(row))
 	copy(new_row, row)
 	//create new row without unwanted column
 	copy(new_row[colIndex:], new_row[colIndex+1:])
 
 	return new_row[:len(new_row)-1]
+}
+
+// Desc: Insert a column for a given row and column index
+// Parameters: row to process, value to append, column index destination
+// Return: a new row with new column
+func insertColumn(row []string, value string, colIndex int) []string {
+	return append(row[:colIndex], append([]string{value}, row[colIndex:]...)...)
+}
+
+// Desc: Move a column attribute for a given row from a source col to a destination col
+// The current element at destination index will move to the left or destIndex-1
+// Parameters: row to process, colindex to remove
+// Return: a new row without this column
+func moveColumn(row []string, srcIndex int, dstIndex int) []string {
+	value := row[srcIndex]
+	return insertColumn(removeColumn(row, srcIndex), value, dstIndex)
 }
 
 // Desc: Save a checkpoint of work in progress, so we can work on a file, stop the program and continue later
@@ -162,7 +193,8 @@ func discriminateByType(values [][]string, typeIndex int) map[string][][]string 
 	values_discriminated := make(map[string][][]string)
 	// initialise map
 	for _, row := range values {
-		new_row := removeColumns(row, 4)
+		// remove transaction type col
+		new_row := removeColumn(row, 4)
 		values_discriminated[row[typeIndex]] = append(values_discriminated[row[typeIndex]], new_row)
 	}
 	return values_discriminated
@@ -198,14 +230,14 @@ func editColumns(values [][]string, csvPath string, loadTmp bool) [][]string {
 			}
 
 			new_row := row
-			//remove 2 last columns : currency, short label and empty column
-			new_row = removeColumns(new_row, 4)
-			new_row = removeColumns(new_row, 1)
-			//new_row = removeColumns(new_row, 4)
+			//remove 2 last columns : currency, short label
+			new_row = removeColumn(new_row, 4)
+			new_row = removeColumn(new_row, 1)
 			//remove card num if it exists in label col
 			new_row = removeCardNum(new_row, 1)
+			new_row = moveColumn(new_row, 0, 1)
 			// add a transaction date column as the first column
-			new_row = addTransactionDateCol(new_row, 1)
+			new_row = addTransactionDateCol(new_row, 0)
 			// add a transaction type column
 			new_row = addTypeColumn(new_row, 3)
 			// prompt to add category column
